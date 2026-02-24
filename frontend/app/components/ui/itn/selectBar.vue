@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ExportCsv from "./ExportCsv.vue";
 import ExportPng from "./ExportPng.vue";
 import ExportHtml from "./ExportHtml.vue";
 import monthRangeDatePicker from "./monthRangeDatePicker.vue";
@@ -18,5 +19,6 @@ const granularityValue = ref("Mois");
         <monthRangeDatePicker />
         <ExportPng />
         <ExportHtml />
+        <ExportCsv />
     </div>
 </template>
