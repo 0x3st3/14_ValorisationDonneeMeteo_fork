@@ -4,7 +4,17 @@ export default defineNuxtConfig({
     // For more info: https://nuxt.com/docs/4.x/guide/concepts/rendering#client-side-rendering.
     ssr: true,
     compatibilityDate: "2025-07-15",
-    devtools: { enabled: true }, // false for production
+    runtimeConfig: {
+        public: {
+            apiBase: "", // api url will be injected when the container is launched with an env variable
+        },
+    },
+    devtools: { enabled: false }, // false for production, true for dev
+
+    // Nitro conf for Node server
+    nitro: {
+        preset: "node-server",
+    },
 
     modules: [
         "@nuxt/eslint",
@@ -14,12 +24,6 @@ export default defineNuxtConfig({
         "@nuxt/fonts",
         "nuxt-echarts",
     ],
-
-    runtimeConfig: {
-        public: {
-            apiBase: "", // api url will be injected when the container is launched with an env variable
-        },
-    },
 
     css: ["~/assets/css/main.css"],
     ui: {
