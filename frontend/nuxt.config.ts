@@ -13,6 +13,7 @@ export default defineNuxtConfig({
         "@nuxt/image",
         "@nuxt/fonts",
         "nuxt-echarts",
+        'nuxt-maplibre',
     ],
 
     runtimeConfig: {
@@ -34,7 +35,9 @@ export default defineNuxtConfig({
             htmlAttrs: {
                 lang: "fr",
             },
-            link: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }],
+            link: [
+                { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+            ],
         },
     },
     echarts: {
