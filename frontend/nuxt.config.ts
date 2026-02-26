@@ -13,6 +13,7 @@ export default defineNuxtConfig({
         "@nuxt/image",
         "@nuxt/fonts",
         "nuxt-echarts",
+        'nuxt-maplibre',
     ],
 
     runtimeConfig: {
