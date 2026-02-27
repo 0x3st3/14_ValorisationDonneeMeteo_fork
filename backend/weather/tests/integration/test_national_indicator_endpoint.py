@@ -1,34 +1,86 @@
+from __future__ import annotations
+
+import datetime as dt
+
+import pytest
 from django.urls import reverse
-from rest_framework import status
 from rest_framework.test import APIClient
 
+from weather.bootstrap_itn import ITNDependencyProvider
+from weather.services.national_indicator.protocols import (
+    NationalIndicatorDailyDataSource,
+)
+from weather.services.national_indicator.types import (
+    DailyPoint,
+    DailySeriesQuery,
+)
 
-def test_get_national_indicator_month_happy_path():
-    client = APIClient()
+pytestmark = pytest.mark.django_db
+
+
+def test_get_national_indicator_month_happy_path(client, seed_itn_day):
+    class InMemoryITNDependency(NationalIndicatorDailyDataSource):
+        def fetch_daily_series(
+            self,
+            query: DailySeriesQuery,
+        ) -> list[DailyPoint]:
+            if query.target_dates is not None:
+                days = query.target_dates
+            else:
+                days = self._iter_days(query.date_start, query.date_end)
+
+            out = []
+
+            for d in days:
+                out.append(
+                    DailyPoint(
+                        date=d,
+                        temperature=10.0,
+                        baseline_mean=9.0,
+                        baseline_std_dev_upper=11.0,
+                        baseline_std_dev_lower=7.0,
+                        baseline_max=15.0,
+                        baseline_min=5.0,
+                    )
+                )
+
+            return out
+
+        @staticmethod
+        def _iter_days(start: dt.date, end: dt.date):
+            d = start
+            one = dt.timedelta(days=1)
+            while d <= end:
+                yield d
+                d += one
+
+    ITNDependencyProvider.set_builder(InMemoryITNDependency)
 
     url = reverse("temperature-national-indicator")
-
     resp = client.get(
         url,
         {
-            "date_start": "2024-01-01",
-            "date_end": "2024-03-31",
+            "date_start": "2025-01-01",
+            "date_end": "2025-01-31",
             "granularity": "month",
+            "slice_type": "full",
         },
     )
 
-    assert resp.status_code == status.HTTP_200_OK
+    assert resp.status_code == 200
+    payload = resp.json()
 
-    data = resp.json()
+    assert payload["metadata"]["baseline"] == "1991-2020"
+    assert payload["metadata"]["granularity"] == "month"
+    assert payload["metadata"]["slice_type"] == "full"
 
-    assert "metadata" in data
-    assert "time_series" in data
+    ts = payload["time_series"]
+    assert len(ts) == 1
 
-    assert data["metadata"]["granularity"] == "month"
-    assert data["metadata"]["slice_type"] == "full"
+    expected_itn_month = 10
 
-    assert isinstance(data["time_series"], list)
-    assert len(data["time_series"]) > 0
+    # compute_national_indicator arrondit à 2 décimales
+    assert ts[0]["temperature"] == round(expected_itn_month, 2)
 
 
 def test_get_national_indicator_missing_required_parameter_returns_400():
