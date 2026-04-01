@@ -108,3 +108,10 @@ jobs:
       - name: "Report Coverage"
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          vite-config-path: frontend/vite.config.ts
+          json-summary-path: frontend/coverage/coverage-summary.json
+          json-final-path: frontend/coverage/coverage-final.json
+          file-coverage-root-path: frontend
+          working-directory: frontend
