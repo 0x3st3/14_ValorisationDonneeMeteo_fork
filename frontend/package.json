@@ -14,7 +14,7 @@
         "lint": "eslint --ext .js,.ts,.vue .",
         "lint:fix": "npm run lint -- --fix",
         "format": "prettier --write '**/*.{js,ts,vue,css,json,html}'",
-        "test:unit": "vitest run",
+        "test:unit": "npx vitest --coverage.enabled true",
         "check": "npm run lint:fix && npm run format && npm run lint"
     },
     "dependencies": {

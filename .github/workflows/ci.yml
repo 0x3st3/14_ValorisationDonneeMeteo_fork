@@ -7,6 +7,50 @@ on:
     branches: [main]
 
 jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate Trivy SARIF report
+        uses: aquasecurity/trivy-action@v0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          vuln-type: "os,library"
+          severity: "HIGH,CRITICAL"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          exit-code: "0"
+
+      - name: Generate Trivy text report
+        uses: aquasecurity/trivy-action@v0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          vuln-type: "os,library"
+          severity: "HIGH,CRITICAL"
+          format: "table"
+          output: "trivy-report.txt"
+          exit-code: "0"
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Upload security scan deliverables
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-report
+          path: |
+            trivy-results.sarif
+            trivy-report.txt
+          retention-days: 30
+
   backend:
     runs-on: ubuntu-latest
     steps:
@@ -60,3 +104,7 @@ jobs:
         run: |
           cd frontend
           npm run test:unit
+
+      - name: "Report Coverage"
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
