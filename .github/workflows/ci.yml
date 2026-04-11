@@ -124,6 +124,9 @@ jobs:
   trivy:
     name: Trivy scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -153,6 +156,13 @@ jobs:
             reports/trivy-sbom.cdx.json
             reports/trivy-report-with-vex.txt
             security/trivy.openvex.json
+
+      - name: Upload Trivy SARIF
+        if: ${{ always() }}
+        uses: github/codeql-action/upload-sarif@v4.35.1
+        with:
+          sarif_file: reports/trivy-results.sarif
+          category: trivy-fs
 
   docker:
     name: Build Docker images
