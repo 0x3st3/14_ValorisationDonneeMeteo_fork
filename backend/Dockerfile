@@ -1,5 +1,5 @@
-FROM python:3.12-slim-bookworm
-
+ARG PYTHON_BASE_IMAGE
+FROM ${PYTHON_BASE_IMAGE}
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -9,10 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY --from=ghcr.io/astral-sh/uv:0.10.0 /uv /uvx /bin/
 
 COPY . .
-RUN uv sync --locked
-
-
-
+RUN uv sync --locked --no-dev
 COPY entrypoint.sh /entrypoint.sh
 
 RUN chmod +x /entrypoint.sh

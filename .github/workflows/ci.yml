@@ -6,128 +6,228 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: valorisation-donnee-meteo-backend
+  FRONTEND_IMAGE_NAME: valorisation-donnee-meteo-frontend
+
 jobs:
-  security-scan:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Generate Trivy SARIF report
-        uses: aquasecurity/trivy-action@v0.35.0
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          vuln-type: "os,library"
-          severity: "HIGH,CRITICAL"
-          format: "sarif"
-          output: "trivy-results.sarif"
-          exit-code: "0"
-
-      - name: Generate Trivy text report
-        uses: aquasecurity/trivy-action@v0.35.0
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          vuln-type: "os,library"
-          severity: "HIGH,CRITICAL"
-          format: "table"
-          output: "trivy-report.txt"
-          exit-code: "0"
-
-      - name: Upload security scan deliverables
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: security-scan-report
-          path: |
-            trivy-results.sarif
-            trivy-report.txt
-          retention-days: 30
-
   backend:
+    name: Backend checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
 
-      - name: "Set up Python"
-        uses: actions/setup-python@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
         with:
-          python-version-file: "backend/pyproject.toml"
+          python-version-file: backend/pyproject.toml
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            backend/uv.lock
+            backend/pyproject.toml
 
       - name: Install backend dependencies
-        run: |
-          cd backend
-          uv sync --locked --all-extras --dev
+        working-directory: backend
+        run: uv sync --locked --extra dev
 
-      - name: Lint
+      - name: Lint backend
+        working-directory: backend
         run: |
-          cd backend
           uv run ruff check .
-          uv run ruff format .
+          uv run ruff format . --check
 
-      - name: Run tests
+      - name: Run backend tests
+        working-directory: backend
         run: |
-          cd backend
-          uv run pytest tests
+          mkdir -p test-results
+          uv run pytest --junitxml=test-results/pytest.xml
+
+      - name: Upload backend test artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: backend-test-report
+          path: |
+            backend/test-results/pytest.xml
 
   frontend:
+    name: Frontend checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
 
-      - name: "Set up Node.js"
-        uses: actions/setup-node@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
-          cache: "npm"
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci
+        working-directory: frontend
+        run: npm ci
 
-      - name: Lint
-        run: |
-          cd frontend
-          npm run lint
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
 
-      - name: Test
+      - name: Run frontend tests
+        working-directory: frontend
         run: |
-          cd frontend
-          npm run test:unit
+          mkdir -p test-results
+          npm run test:unit -- --reporter=default --reporter=junit --outputFile.junit=test-results/vitest.xml
 
-      - name: "Report Coverage"
-        if: always()
-        uses: davelosert/vitest-coverage-report-action@v2
+      - name: Upload frontend test artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          vite-config-path: vite.config.ts
-          json-summary-path: coverage/coverage-summary.json
-          json-final-path: coverage/coverage-final.json
-          working-directory: frontend
+          name: frontend-test-report
+          path: |
+            frontend/test-results/vitest.xml
+            frontend/coverage
 
-  docker-images:
-    name: Build & publish Docker images
+  codeql:
+    name: CodeQL
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
     steps:
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4.35.1
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+          languages: ${{ matrix.language }}
+
+      - name: Analyze with CodeQL
+        uses: github/codeql-action/analyze@v4.35.1
+        with:
+          category: /language:${{ matrix.language }}
+
+  trivy:
+    name: Trivy scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
+        with:
+          version: v0.68.2
+          cache: true
+
+      - name: Generate Trivy reports
+        run: |
+          mkdir -p reports
+          trivy fs --exit-code 0 --severity HIGH,CRITICAL --format sarif --output reports/trivy-results.sarif .
+          trivy fs --exit-code 0 --severity HIGH,CRITICAL --format table --output reports/trivy-report.txt .
+          trivy fs --exit-code 0 --format cyclonedx --output reports/trivy-sbom.cdx.json .
+          trivy sbom --exit-code 0 --severity HIGH,CRITICAL --format table --vex security/trivy.openvex.json --output reports/trivy-report-with-vex.txt reports/trivy-sbom.cdx.json
+
+      - name: Upload Trivy artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: trivy-report
+          path: |
+            reports/trivy-results.sarif
+            reports/trivy-report.txt
+            reports/trivy-sbom.cdx.json
+            reports/trivy-report-with-vex.txt
+            security/trivy.openvex.json
+
+  docker:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, codeql, trivy]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Normalize image owner
+        id: vars
+        run: echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate DHI configuration
+        run: |
+          test -n "${{ secrets.DHI_USERNAME }}" || { echo "Missing secret: DHI_USERNAME"; exit 1; }
+          test -n "${{ secrets.DHI_PASSWORD }}" || { echo "Missing secret: DHI_PASSWORD"; exit 1; }
+          test -n "${{ vars.DHI_BACKEND_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_BACKEND_BASE_IMAGE"; exit 1; }
+          test -n "${{ vars.DHI_NODE_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_NODE_BASE_IMAGE"; exit 1; }
+
+      - name: Log in to Docker Hardened Images
+        uses: docker/login-action@v4.1.0
+        with:
+          registry: dhi.io
+          username: ${{ secrets.DHI_USERNAME }}
+          password: ${{ secrets.DHI_PASSWORD }}
+
+      - name: Log in to GHCR
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: docker/login-action@v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-      - name: Build and push
-        uses: docker/build-push-action@v7
+        uses: docker/setup-buildx-action@v4.0.0
+
+      - name: Extract backend image metadata
+        id: backend-meta
+        uses: docker/metadata-action@v6.0.0
         with:
-          push: true
-          tags: 0x3st3/app:latest
+          images: ${{ env.REGISTRY }}/${{ steps.vars.outputs.owner_lc }}/${{ env.BACKEND_IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build backend image
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: ./backend
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.backend-meta.outputs.tags }}
+          labels: ${{ steps.backend-meta.outputs.labels }}
+          build-args: |
+            PYTHON_BASE_IMAGE=${{ vars.DHI_BACKEND_BASE_IMAGE }}
+
+      - name: Extract frontend image metadata
+        id: frontend-meta
+        uses: docker/metadata-action@v6.0.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.vars.outputs.owner_lc }}/${{ env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: ./frontend
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.frontend-meta.outputs.tags }}
+          labels: ${{ steps.frontend-meta.outputs.labels }}
+          build-args: |
+            NODE_BASE_IMAGE=${{ vars.DHI_NODE_BASE_IMAGE }}

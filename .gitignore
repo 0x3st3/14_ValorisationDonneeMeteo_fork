@@ -18,6 +18,11 @@ Thumbs.db
 # Logs
 *.log
 
+# Local verification artifacts
+backend/test-results/
+frontend/test-results/
+frontend/coverage/
+
 # Nuxt Fonts
 .data
 

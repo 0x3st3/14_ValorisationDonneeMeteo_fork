@@ -34,6 +34,8 @@ services:
   backend:
     build:
       context: ./backend
+      args:
+        PYTHON_BASE_IMAGE: ${BACKEND_BASE_IMAGE}
     env_file:
       - ./.env
     depends_on:
@@ -46,13 +48,46 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE}
     env_file:
       - ./.env
     networks:
       - app_net
 
+  prometheus:
+    image: prom/prometheus:v3.11.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - backend
+    networks:
+      - app_net
+
+  grafana:
+    image: grafana/grafana:12.4
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards/json:ro
+    depends_on:
+      - prometheus
+    networks:
+      - app_net
+
 volumes:
   timescaledb-data:
+    driver: local
+  grafana-data:
     driver: local
 networks:
   app_net:
