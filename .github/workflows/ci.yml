@@ -173,8 +173,10 @@ jobs:
         run: |
           test -n "${{ secrets.DHI_USERNAME }}" || { echo "Missing secret: DHI_USERNAME"; exit 1; }
           test -n "${{ secrets.DHI_PASSWORD }}" || { echo "Missing secret: DHI_PASSWORD"; exit 1; }
-          test -n "${{ vars.DHI_BACKEND_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_BACKEND_BASE_IMAGE"; exit 1; }
-          test -n "${{ vars.DHI_NODE_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_NODE_BASE_IMAGE"; exit 1; }
+          test -n "${{ vars.DHI_BACKEND_BUILD_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_BACKEND_BUILD_BASE_IMAGE"; exit 1; }
+          test -n "${{ vars.DHI_BACKEND_RUNTIME_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_BACKEND_RUNTIME_BASE_IMAGE"; exit 1; }
+          test -n "${{ vars.DHI_NODE_BUILD_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_NODE_BUILD_BASE_IMAGE"; exit 1; }
+          test -n "${{ vars.DHI_NODE_RUNTIME_BASE_IMAGE }}" || { echo "Missing repository variable: DHI_NODE_RUNTIME_BASE_IMAGE"; exit 1; }
 
       - name: Log in to Docker Hardened Images
         uses: docker/login-action@v4.1.0
@@ -211,7 +213,8 @@ jobs:
           tags: ${{ steps.backend-meta.outputs.tags }}
           labels: ${{ steps.backend-meta.outputs.labels }}
           build-args: |
-            PYTHON_BASE_IMAGE=${{ vars.DHI_BACKEND_BASE_IMAGE }}
+            PYTHON_BUILD_BASE_IMAGE=${{ vars.DHI_BACKEND_BUILD_BASE_IMAGE }}
+            PYTHON_RUNTIME_BASE_IMAGE=${{ vars.DHI_BACKEND_RUNTIME_BASE_IMAGE }}
 
       - name: Extract frontend image metadata
         id: frontend-meta
@@ -230,4 +233,5 @@ jobs:
           tags: ${{ steps.frontend-meta.outputs.tags }}
           labels: ${{ steps.frontend-meta.outputs.labels }}
           build-args: |
-            NODE_BASE_IMAGE=${{ vars.DHI_NODE_BASE_IMAGE }}
+            NODE_BUILD_BASE_IMAGE=${{ vars.DHI_NODE_BUILD_BASE_IMAGE }}
+            NODE_RUNTIME_BASE_IMAGE=${{ vars.DHI_NODE_RUNTIME_BASE_IMAGE }}

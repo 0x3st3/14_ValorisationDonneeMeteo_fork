@@ -35,7 +35,8 @@ services:
     build:
       context: ./backend
       args:
-        PYTHON_BASE_IMAGE: ${BACKEND_BASE_IMAGE}
+        PYTHON_BUILD_BASE_IMAGE: ${BACKEND_BUILD_BASE_IMAGE}
+        PYTHON_RUNTIME_BASE_IMAGE: ${BACKEND_RUNTIME_BASE_IMAGE}
     env_file:
       - ./.env
     depends_on:
@@ -49,7 +50,8 @@ services:
     build:
       context: ./frontend
       args:
-        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE}
+        NODE_BUILD_BASE_IMAGE: ${NODE_BUILD_BASE_IMAGE}
+        NODE_RUNTIME_BASE_IMAGE: ${NODE_RUNTIME_BASE_IMAGE}
     env_file:
       - ./.env
     networks:
