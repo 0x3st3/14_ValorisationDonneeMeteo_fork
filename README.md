@@ -1,8 +1,8 @@
 # Valorisation Donnée Météo
 
 [![CI](https://github.com/0x3st3/14_ValorisationDonneeMeteo_fork/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/0x3st3/14_ValorisationDonneeMeteo_fork/actions/workflows/ci.yml)
-
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/0x3st3/14_ValorisationDonneeMeteo_fork/badge)](https://scorecard.dev/viewer/?uri=github.com/0x3st3/14_ValorisationDonneeMeteo_fork)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12669/badge)](https://www.bestpractices.dev/projects/12669)
 
 Projet Data For Good - Saison 14
 
