@@ -1,5 +1,7 @@
 # Valorisation Donnée Météo
 
+[![CI](https://github.com/0x3st3/14_ValorisationDonneeMeteo_fork/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/0x3st3/14_ValorisationDonneeMeteo_fork/actions/workflows/ci.yml)
+
 Projet Data For Good - Saison 14
 
 ## Structure du projet
